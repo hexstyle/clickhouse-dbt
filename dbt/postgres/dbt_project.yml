@@ -1,0 +1,11 @@
+name: dwh
+version: '1.0'
+config-version: 2
+
+profile: dwh_profile
+
+model-paths: ["model"]
+target-path: "target"
+clean-targets:
+  - "target"
+

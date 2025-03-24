@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: postgres
+    database: dwh
+    schema: public
+    tables:
+      - name: dislocation
+      - name: car_passport
+      - name: fact_load

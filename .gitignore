@@ -1,0 +1,11 @@
+﻿/clickhouse/data/
+/clickhouse/log/
+/.idea/
+/postgres_data/
+/airflow/db/
+/dbt/postgres/target
+/dbt/clickhouse/target
+/dbt/postgres/logs
+/dbt/clickhouse/logs
+/elasticsearch/data
+

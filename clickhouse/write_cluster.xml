@@ -1,0 +1,22 @@
+﻿<clickhouse>
+    <!-- Кэш для несжатых блоков -->
+    <index_uncompressed_cache_size>500000000</index_uncompressed_cache_size> <!-- 500mb -->
+    <!-- Кэш индекса -->
+    <index_mark_cache_size>500000000</index_mark_cache_size> <!-- 500mb -->
+    <!-- В зависимости от количества выделенных процессоров. Смотреть на конкретном железе -->
+    <!-- Ограничение использования памяти (для стабильной работы у сервера 20% должно быть свободно) -->
+    <max_server_memory_usage>9000000000</max_server_memory_usage> <!-- 9GB для моей локальной машины -->
+    <background_pool_size>8</background_pool_size>
+    <merge_tree>
+        <!-- Потоков для мутаций 50/50 от общего пула. В зависимости от изменения специфики операций в dbt меняем соотношение -->
+        <number_of_free_entries_in_pool_to_execute_mutation>4</number_of_free_entries_in_pool_to_execute_mutation>
+        <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>4</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+        <merge_tree_clear_old_temporary_directories_interval_seconds>60</merge_tree_clear_old_temporary_directories_interval_seconds>
+        <merge_tree_clear_old_parts_interval_seconds>60</merge_tree_clear_old_parts_interval_seconds>
+        <simultaneous_parts_removal_limit>60</simultaneous_parts_removal_limit>
+        <old_parts_lifetime>60</old_parts_lifetime>
+    </merge_tree>
+    <!-- какую долю фоновых merge-задач может занимать выполнение операций мутаций (mutations) в системе -->
+    <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
+
+</clickhouse>

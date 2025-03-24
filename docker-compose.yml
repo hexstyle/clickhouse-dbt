@@ -1,0 +1,306 @@
+﻿version: "3.8"
+x-airflow-env: &airflow_env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_USER}:${AIRFLOW_PASSWORD}@postgres/airflow_db
+  AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+  AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+  AIRFLOW_ADMIN_USERNAME: "${AIRFLOW_ADMIN_USERNAME}"
+  AIRFLOW_ADMIN_PASSWORD: "${AIRFLOW_ADMIN_PASSWORD}"
+  AIRFLOW_ADMIN_EMAIL: "${AIRFLOW_ADMIN_EMAIL}"
+  AIRFLOW__LOGGING__WORKER_LOG_SERVER_AUTH: "False" # логи и вебсервер в одном  контейнере, нет нужды в авторизации.
+  AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_FERNET_KEY}"
+  AIRFLOW__CORE__LOGGING_LEVEL: DEBUG
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  CLICKHOUSE_WRITE_PASSWORD: ${CLICKHOUSE_WRITE_PASSWORD}
+  AIRFLOW_HOME: "/opt/airflow/dags"
+  AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+
+x-openmetadata-env: &openmetadata_env
+  DB_DRIVER_CLASS: org.postgresql.Driver
+  DB_SCHEME: postgresql
+  DB_PARAMS: -allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_USER: ${POSTGRES_USER}
+  DB_USER_PASSWORD: ${POSTGRES_PASSWORD}
+  OM_DATABASE: openmetadata_db
+  ELASTICSEARCH_HOST: elasticsearch
+  ELASTICSEARCH_PORT: 9200
+  ELASTICSEARCH_SCHEME: http
+  ELASTICSEARCH_USER: elastic
+  ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+  SEARCH_TYPE: "elasticsearch"
+  PIPELINE_SERVICE_CLIENT_ENDPOINT: http://airflow-webserver:8080
+  SERVER_HOST_API_URL: http://openmetadata:8585/api
+  AIRFLOW_USERNAME: ${AIRFLOW_ADMIN_USERNAME}
+  AIRFLOW_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+  RSA_PUBLIC_KEY_FILE_PATH: "/opt/openmetadata/conf/public_key.der"
+  RSA_PRIVATE_KEY_FILE_PATH: "/opt/openmetadata/conf/private_key.der"
+  JWT_ISSUER: "localhost"
+  JWT_KEY_ID: "gb389a-9f76-gdjs-a92j-0242bk94356"
+  AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEYS:-[http://openmetadata:8585/api/v1/system/config/jwks]}
+  AUTHORIZER_ENABLE_SECURE_SOCKET: false
+  FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+     
+services:
+  postgres:
+    build: ./postgres
+    container_name: postgres
+    networks:
+      - project_net
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: dwh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clickhouse1:
+    build:
+      context: ./clickhouse
+      args:
+        CLICKHOUSE_WRITE_PASSWORD: ${CLICKHOUSE_WRITE_PASSWORD}
+        CLICKHOUSE_READ_PASSWORD: ${CLICKHOUSE_READ_PASSWORD}
+        CLICKHOUSE_SERVER_ID: 1
+    container_name: clickhouse1
+    networks:
+      - project_net
+    ports:
+      - "8123:8123"    # HTTP
+      - "9000:9000"    # Native
+      - "2222:22"
+    volumes:
+      - ./clickhouse/write_cluster.xml:/etc/clickhouse-server/config.d/write_cluster.xml
+      - clickhouse1_log:/var/log/clickhouse-server
+    #  - clickhouse1_data:/var/lib/clickhouse
+    environment:
+      - CLUSTER_ROLE=write
+    command: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - clickhouse2
+      - clickhouse3
+
+  clickhouse2:
+    build:
+      context: ./clickhouse
+      args:
+        - CLICKHOUSE_WRITE_PASSWORD=${CLICKHOUSE_WRITE_PASSWORD}
+        - CLICKHOUSE_READ_PASSWORD=${CLICKHOUSE_READ_PASSWORD}
+        - CLICKHOUSE_SERVER_ID=2
+    container_name: clickhouse2
+    networks:
+      - project_net
+    ports:
+      - "8124:8123"
+      - "9001:9000"
+      - "2223:22"
+    volumes:
+      - ./clickhouse/read_cluster.xml:/etc/clickhouse-server/config.d/read_cluster.xml
+      - clickhouse2_log:/var/log/clickhouse-server
+    #  - clickhouse2_data:/var/lib/clickhouse
+    environment:
+      - CLUSTER_ROLE=read
+    command: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD-SHELL", "service clickhouse-server status"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clickhouse3:
+    build:
+      context: ./clickhouse
+      args:
+        - CLICKHOUSE_WRITE_PASSWORD=${CLICKHOUSE_WRITE_PASSWORD}
+        - CLICKHOUSE_READ_PASSWORD=${CLICKHOUSE_READ_PASSWORD}
+        - CLICKHOUSE_SERVER_ID=3
+    container_name: clickhouse3
+    networks:
+      - project_net
+    ports:
+      - "8125:8123"
+      - "9002:9000"
+      - "2224:22"
+    volumes:
+      - ./clickhouse/read_cluster.xml:/etc/clickhouse-server/config.d/read_cluster.xml
+      - clickhouse3_log:/var/log/clickhouse-server
+     # - clickhouse3_data:/var/lib/clickhouse
+    environment:
+      - CLUSTER_ROLE=read
+    command: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD-SHELL", "service clickhouse-server status"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    build: ./airflow
+    container_name: airflow-webserver
+    restart: always
+    networks:
+      - project_net
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/script:/opt/airflow/script
+      - ./dbt/profiles.yml:/home/airflow/.dbt/profiles.yml
+      - ./dbt:/usr/app/dbt
+      - ./airflow/airflow.cfg:/opt/airflow/config/airflow.cfg
+      - ./airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+    environment:
+      <<: *airflow_env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: airflow webserver
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  airflow-scheduler:
+    build: ./airflow
+    container_name: airflow-scheduler
+    networks:
+      - project_net
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/script:/opt/airflow/script
+      - ./airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./dbt/profiles.yml:/home/airflow/.dbt/profiles.yml
+      - ./dbt:/usr/app/dbt
+      - ./airflow/airflow.cfg:/opt/airflow/config/airflow.cfg
+    environment:
+      <<: *airflow_env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-webserver:
+        condition: service_healthy
+    command: airflow scheduler
+
+  liquibase_clickhouse:
+    image: liquibase/liquibase:4.31.1
+    container_name: liquibase_clickhouse
+    networks:
+      - project_net
+    volumes:
+      - ./clickhouse/liquibase:/liquibase/changelogs
+      - ./clickhouse/jdbc:/liquibase/jdbc  # Содержит JAR, например, clickhouse-jdbc-0.8.1.jar
+    environment:
+      LIQUIBASE_CLASSPATH: "/liquibase/jdbc/clickhouse.jar"
+    command: >
+      liquibase --searchPath=/liquibase/changelogs --changeLogFile=changelog.xml
+                --url=jdbc:clickhouse://clickhouse1:8123/?socket_timeout=10800000
+                --username=write_user
+                --password=${CLICKHOUSE_WRITE_PASSWORD}
+                --databaseChangeLogTableName=DATABASECHANGELOG
+                --databaseChangeLogLockTableName=DATABASECHANGELOGLOCK
+                --driver=shaded.liquibase.ru.yandex.clickhouse.ClickHouseDriver update
+    depends_on:
+      clickhouse1:
+        condition: service_healthy
+      clickhouse2:
+        condition: service_healthy
+      clickhouse3:
+        condition: service_healthy
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - xpack.security.enabled=false
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - project_net
+
+  openmetadata-migrate:
+    container_name: execute_migrate_all
+    image: openmetadata/server:1.6.5
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    environment:
+      <<: *openmetadata_env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - project_net
+      
+  openmetadata:
+    image: openmetadata/server:1.6.5
+    container_name: openmetadata
+    restart: always
+    ports:
+      - "8585:8585"
+    command: "/openmetadata-start.sh"
+    volumes:
+      - ./openmetadata/public_key.der:/opt/openmetadata/conf/public_key.der
+      - ./openmetadata/private_key.der:/opt/openmetadata/conf/private_key.der
+      - ./openmetadata/jwtkeys:/etc/openmetadata/jwtkeys
+    environment:
+      <<: *openmetadata_env
+    depends_on:
+      - openmetadata-migrate
+    networks:
+      - project_net
+
+
+volumes:
+  clickhouse1_log:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./clickhouse/log/clickhouse1
+  clickhouse2_log:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./clickhouse/log/clickhouse2
+  clickhouse3_log:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./clickhouse/log/clickhouse3
+  postgres_data:
+
+networks:
+  project_net:
+    driver: bridge
+

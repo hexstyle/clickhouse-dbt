@@ -1,0 +1,27 @@
+source:
+  type: dbt
+  serviceName: dbt_service
+  serviceConnection:
+    config:
+      type: PostgreSQL
+      username: user
+      password: password
+      hostPort: postgres:5432
+  sourceConfig:
+    config:
+      type: DBT
+      dbtConfigSource:
+        dbtConfigType: local
+        dbtCatalogFilePath: "/usr/app/dbt/clickhouse/target/catalog.json"
+        dbtManifestFilePath: "/usr/app/dbt/clickhouse/target/manifest.json"
+        dbtRunResultsFilePath: "/usr/app/dbt/clickhouse/target/run_results.json"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: "http://openmetadata:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbGhvc3QiLCJzdWIiOiJhaXJmbG93IiwiYXVkIjoibG9jYWxob3N0IiwiZXhwIjoxNzc2ODg2NzI1LCJpYXQiOjE3NDA4OTAzMjV9.X6dRou-S6-byFoWL7OaJ158oYYHiDhWrkPxX3y8kS6MLZJjRiUckLbyeoXKycIfcHS8gB5NOBa6RKqcosHIspI5u-Pagdp-ge3A_qQ-XgTBU9dZuzUbE8jG3pTwr_3CaBDuzmtRzeUntgpG-q5L29TGuac0OPpRGu6K6uckD6OkUALB4zIYT1s175HLxzyZF95lfSH-R0HjNlrfub-MOUB0WEyWU_mKBOnGGCfn5SBPP7QqXGJo_YNafKBSZeQ32y9aK85ekoTEo1cR-kOkR21igbo3mpf0oN3-5sv1vN-gM86HeJQ5ZGK8QSxnQBrIBXJmIbtLCRj9s3MwcZRCIgA"

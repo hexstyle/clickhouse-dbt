@@ -1,0 +1,59 @@
+﻿<clickhouse>
+    <users>
+        <!-- Пользователь для операций записи -->
+        <write_user>
+            <password>${CLICKHOUSE_WRITE_PASSWORD}</password>
+            <networks incl="networks" replace="replace">
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <default_database>default</default_database>
+            <default_cluster>write_cluster</default_cluster>
+            <allowed_clusters>
+                <cluster>write_cluster</cluster>
+            </allowed_clusters>
+
+            <!-- Для write-кластера крайне важно перекладывать сразу всю партицию целиком, чтобы обеспечить целостность -->
+            <max_memory_usage>4000000000</max_memory_usage>  <!-- 4 GB на один запрос -->
+            <max_memory_usage_for_user>6000000000</max_memory_usage_for_user>  <!-- 6 GB на одного пользователя -->
+            <max_memory_usage_for_all_users>8000000000</max_memory_usage_for_all_users>  <!-- 8 GB на всех пользователей -->
+        </write_user>
+
+        <!-- Пользователь для операций чтения (только SELECT) -->
+        <read_user>
+            <password>${CLICKHOUSE_READ_PASSWORD}</password>
+            <networks incl="networks" replace="replace">
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <default_database>default</default_database>
+            <default_cluster>read_cluster</default_cluster>
+            <allowed_clusters>
+                <cluster>read_cluster</cluster>
+            </allowed_clusters>
+            <readonly>1</readonly>
+            <max_memory_usage>1000000000</max_memory_usage>
+            <max_read_buffer_size>112000</max_read_buffer_size>
+            <max_threads>4</max_threads>
+            <max_result_rows>1000000</max_result_rows>
+            <max_result_bytes>100000000</max_result_bytes>
+        </read_user>
+
+        <!-- Пользователь для CI/CD с доступом к глобальному кластеру (все сервера) -->
+        <cicd>
+            <password>${CICD_PASSWORD}</password>
+            <networks incl="networks" replace="replace">
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <default_database>default</default_database>
+            <default_cluster>global_cluster</default_cluster>
+            <allowed_clusters>
+                <cluster>global_cluster</cluster>
+            </allowed_clusters>
+        </cicd>
+    </users>
+</clickhouse>

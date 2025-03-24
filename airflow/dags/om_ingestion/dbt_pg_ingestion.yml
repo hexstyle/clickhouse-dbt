@@ -1,0 +1,21 @@
+source:
+    type: dbt
+    serviceName: dbt_test_service
+    sourceConfig:
+        config:
+            type: DBT
+            dbtConfigSource:
+                dbtConfigType: "local"
+                dbtCatalogFilePath: "/usr/app/dbt/newproj/postgres_dbt/target/catalog.json"
+                dbtManifestFilePath: "/usr/app/dbt/newproj/postgres_dbt/target/manifest.json"
+                dbtRunResultsFilePath: "/usr/app/dbt/newproj/postgres_dbt/target/run_results.json"
+sink:
+    type: metadata-rest
+    config: {}
+workflowConfig:
+    loggerLevel: DEBUG
+    openMetadataServerConfig:
+        hostPort: "http://openmetadata:8585/api"
+        authProvider: openmetadata
+        securityConfig:
+            jwtToken: "eyJraWQiOiJnYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbGhvc3QiLCJzdWIiOiJpbmdlc3Rpb24tYm90Iiwicm9sZXMiOlsiRGVmYXVsdEJvdFJvbGUiLCJJbmdlc3Rpb25Cb3RSb2xlIl0sImVtYWlsIjoiaW5nZXN0aW9uLWJvdEBvcGVuLW1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3NDA5NjYxNDgsImV4cCI6bnVsbH0.dc3x0-GSVxwNz5TI2-5vRhlcxwVly1qc4Q-ApieGa1q5XqtA_Y9h2rfrWcCzNEfDgAOePhtUESi8MbjY6KLopvqiFFxmrMRmjZk6T03yQRWNUHDmzhSfMwPh4QiVeYszIx5-YAr1r_pDCiILDUiQTZTDJMlYots3GREJqwk-5InO2DnP32ZCLtL63CwCJgCFk-EAl3o6mgYczHwgSP4-aPAP-h_ulJkrwYi2g8WaVMh3GeliZCx0XdMkMVpcQkbf7g0bv3RycM0s6_3dNuHG7qFg2Dfcgj9RvRt-dsSk91mlL7JAKvTwGcz1tEx6yTZi55RiyF9SybKrhjRDoly-4g"

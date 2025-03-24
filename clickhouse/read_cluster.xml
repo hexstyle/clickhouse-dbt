@@ -1,0 +1,24 @@
+﻿<clickhouse>
+    <profiles>
+        <default>
+            <max_threads>4</max_threads>
+            <!--Из-за ошибки "Task count for MergeTreeBackgroundExecutor must not be zero" ставим 1. Так бы 0 по-хорошему -->
+            <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
+        </default>
+    </profiles>
+    <merge_tree>
+        <!-- Без этих настроек Clickhouse выдает ошибку -->
+        <number_of_free_entries_in_pool_to_execute_mutation>1</number_of_free_entries_in_pool_to_execute_mutation>
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>1</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+        <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>1</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+        <merge_tree_clear_old_temporary_directories_interval_seconds>60</merge_tree_clear_old_temporary_directories_interval_seconds>
+        <merge_tree_clear_old_parts_interval_seconds>60</merge_tree_clear_old_parts_interval_seconds>
+        <simultaneous_parts_removal_limit>60</simultaneous_parts_removal_limit>
+        <old_parts_lifetime>60</old_parts_lifetime>
+    </merge_tree>
+    <!--Из-за ошибки "Task count for MergeTreeBackgroundExecutor must not be zero" ставим 1. Так бы 0 по-хорошему -->
+    <background_pool_size>1</background_pool_size>
+    <!-- Ограничение использования памяти (для стабильной работы у сервера 20% должно быть свободно) -->
+    <max_server_memory_usage>2000000000</max_server_memory_usage> <!-- 2GB для моей локальной машины -->
+</clickhouse>
+

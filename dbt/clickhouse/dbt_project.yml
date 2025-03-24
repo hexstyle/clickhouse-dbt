@@ -1,0 +1,14 @@
+name: reporting
+version: '1.0'
+config-version: 2
+
+profile: click_profile
+
+model-paths: ["model"]
+target-path: "target"
+clean-targets:
+  - "target"
+
+models:
+  
+  postgres:

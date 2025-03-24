@@ -1,0 +1,36 @@
+click_profile:
+  outputs:
+    clickhouse_target:
+      database: online_reporting
+      host: clickhouse1
+      password: '{{ env_var(''CLICKHOUSE_WRITE_PASSWORD'') }}'
+      port: 9000
+      schema: online_reporting
+      threads: 1
+      type: clickhouse
+      user: write_user
+  target: clickhouse_target
+dwh_profile:
+  outputs:
+    dev:
+      dbname: dwh
+      host: postgres
+      pass: '{{ env_var(''POSTGRES_PASSWORD'') }}'
+      port: 5432
+      schema: public
+      threads: 1
+      type: postgres
+      user: '{{ env_var(''POSTGRES_USER'') }}'
+  target: dev
+postgres_dbt:
+  outputs:
+    dev:
+      dbname: dwh
+      host: postgres
+      pass: password
+      port: 5432
+      schema: public
+      threads: 1
+      type: postgres
+      user: user
+  target: dev
